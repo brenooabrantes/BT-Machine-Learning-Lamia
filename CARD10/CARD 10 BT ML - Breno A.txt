@@ -1,0 +1,140 @@
+Breno Augusto Oliveira Abrantes
+2554046	
+
+CARD 10
+
+KNN (K - Nearest Neighbors) - é um tipo de algoritmo no campo de ML para encontrar proximidade entre os dados por base em vetor
+
+import pandas as pd // importando biblioteca pandas
+
+r_cols = ['user_id', 'movie_id', 'rating']
+ratings = pd.read_csv('C:xxxxxxxxx/DataScience/DataScience-Python3/ml-100k/u.data', sep='\t', names=r_cols, usecols=range(3))
+ratings.head()
+
+criamos 2 variáveis, uma para receber as informações que queremos em colunas (r_cols) e outra pra receber o arquivo. Depois usamos .head pra mostrar a tabela junto da nossa variável
+
+import numpy as np
+
+movieProperties = ratings.groupby('movie_id').agg({'rating': [np.size, np.mean]})
+movieProperties.head()
+
+iremos agrupar as avaliações (ratings) pelo nome dos filmes, por isso o .groupby('movie_id') na nossa varaivel movie_Properties, ou seja, as avaliações serão distribuídas respectivamente para os filmes. Para nossa variável iremos organizar colocando o numero de ratings com o size e fazendo uma média delas (mean), usamos a biblioteca numpy para essas funções. np.size e np.mean
+
+
+movieNumRatings = pd.DataFrame(movieProperties['rating']['size'])
+movieNormalizedNumRatings = movieNumRatings.apply(lambda x: (x - np.min(x)) / (np.max(x) - np.min(x)))
+movieNormalizedNumRatings.head()
+
+aqui iremos criar a variável para extrair da nossa movieProperties as avaliações dos filmes e gerar um df. E em seguida usamos lambda pra estabilizar os valores num padrão, assim colocando em ordem que quanto mais próximo de 0 possui menos avaliações e quanto mais prox de 1 mais avaliações
+
+
+movieDict = {}
+with open(r'C:/Users/Breno A/Documents/BOOTCAMP DO LAMIA/ZIPS UDEMY/DataScience/DataScience-Python3/ml-100k/u.item', encoding = "ISO-8859-1") as f:
+    temp = ''
+    for line in f:
+        #line.decode("ISO-8859-1")
+        fields = line.rstrip('\n').split('|')
+        movieID = int(fields[0])
+        name = fields[1]
+        genres = fields[5:25]
+        genres = map(int, genres)
+        movieDict[movieID] = (name, np.array(list(genres)), movieNormalizedNumRatings.loc[movieID].get('size'), movieProperties.loc[movieID].rating.get('mean'))
+
+Criamos um dicionário (dict) com todas as informações necessárias do filme, usando fields pra declará-las conforme necessário. Há certas conversões para int em algumas partes, como no gênero e no ID. Criamos uma lista que irá produzir essas informações e logo após printamos ela, que resultará em:
+
+('Toy Story (1995)', array([0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), 0.7735849056603774, 3.8783185840707963)
+
+
+from scipy import spatial
+
+def ComputeDistance(a, b):
+    genresA = a[1]
+    genresB = b[1]
+    genreDistance = spatial.distance.cosine(genresA, genresB)
+    popularityA = a[2]
+    popularityB = b[2]
+    popularityDistance = abs(popularityA - popularityB)
+    return genreDistance + popularityDistance
+    
+ComputeDistance(movieDict[2], movieDict[4])
+
+criamos uma função para calcular a distância entre dois filmes distintos (a, b)
+e fazemos o calculo a partir do cosseno (spatial.distance.cosine) em que 0 é mais similar e 1 mais distinto
+e o cálculo de popularidade dos filmes a e b também, mas dessa vez sem cosseno, e sim um calculo absoluto (abs)
+após isso era retornar nossos 2 valores de similaridade e popularidade e testamos com:
+
+ComputeDistance(movieDict[2], movieDict[4]) == 0.8004574042309892
+ComputeDistance(movieDict[2], movieDict[9]) == 1.2881646655231562
+ComputeDistance(movieDict[12], movieDict[3]) == 0.5964952771324918
+
+podemos printar utilizando o dicionário e seu id, que irá mostrar as especifidades de cada filme:
+
+print(movieDict[2])
+print(movieDict[4])
+
+('GoldenEye (1995)', array([0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0]), 0.22298456260720412, 3.2061068702290076)
+('Get Shorty (1995)', array([0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), 0.3567753001715266, 3.550239234449761)
+
+
+
+import operator
+
+def getNeighbors(movieID, K):
+    distances = []
+    for movie in movieDict:
+        if (movie != movieID):
+            dist = ComputeDistance(movieDict[movieID], movieDict[movie])
+            distances.append((movie, dist))
+    distances.sort(key=operator.itemgetter(1))
+    neighbors = []
+    for x in range(K):
+        neighbors.append(distances[x][0])
+    return neighbors
+
+K = 10
+avgRating = 0
+neighbors = getNeighbors(1, K)
+for neighbor in neighbors:
+    avgRating += movieDict[neighbor][3]
+    print (movieDict[neighbor][0] + " " + str(movieDict[neighbor][3]))
+    
+avgRating /= K
+
+iremos usar a função de encontrar os mais próximos in k, fazemos um for pra iterar os filmes e calcular distancia entre os 2 filmes, o anterior e atual. Ordenamos para que os mais próximos entre si venham primeiro "distances.sort(key=operator.itemgetter(1))" 
+
+e em seguida um for para os mais distantes, que estarão proximo do 0 e dar return neles
+
+queremos encontrar os 10 mais próximos e assim setamos o k=10; usamos a função anterior para encontrar os vizinhos mais próximos neighbors = getNeighbors(1, K)
+
+e um for
+
+for neighbor in neighbors:
+    avgRating += movieDict[neighbor][3]
+    print (movieDict[neighbor][0] + " " + str(movieDict[neighbor][3]))
+    
+avgRating /= K ---- pegar a media e dividir pelo numero de vizinhos, que é 10
+alias, o avgRating é a variável para receber o average de avaliações 
+
+
+que ira pegar o dicionário e somar com a media e em seguida printar as infos:
+
+Liar Liar (1997) 3.156701030927835
+Aladdin (1992) 3.8127853881278537
+Willy Wonka and the Chocolate Factory (1971) 3.6319018404907975
+Monty Python and the Holy Grail (1974) 4.0664556962025316
+Full Monty, The (1997) 3.926984126984127
+George of the Jungle (1997) 2.685185185185185
+Beavis and Butt-head Do America (1996) 2.7884615384615383
+Birdcage, The (1996) 3.4436860068259385
+Home Alone (1990) 3.0875912408759123
+Aladdin and the King of Thieves (1996) 2.8461538461538463
+
+--------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
